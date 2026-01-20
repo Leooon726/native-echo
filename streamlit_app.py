@@ -1,6 +1,496 @@
-import streamlit as st
+"""
+NativeEcho v1.4 - AI English Coach
+Auto-Auth & Specific Model Edition
 
-st.title("🎈 My new app")
-st.write(
-    "Let's start building! For help and inspiration, head over to [docs.streamlit.io](https://docs.streamlit.io/)."
+A personal AI English coach with:
+- Auto-login via pre-configured secrets
+- Supabase database persistence
+- SiliconFlow LLM API integration
+"""
+
+import streamlit as st
+import random
+from datetime import datetime
+from openai import OpenAI
+from supabase import create_client, Client
+
+# =============================================================================
+# Page Configuration
+# =============================================================================
+st.set_page_config(
+    page_title="NativeEcho - AI English Coach",
+    page_icon="🗣️",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
+
+# =============================================================================
+# Initialize Clients
+# =============================================================================
+@st.cache_resource
+def init_supabase() -> Client:
+    """Initialize Supabase client from secrets."""
+    url = st.secrets["supabase"]["url"]
+    key = st.secrets["supabase"]["key"]
+    return create_client(url, key)
+
+def get_openai_client(api_key: str, base_url: str) -> OpenAI:
+    """Create OpenAI-compatible client for SiliconFlow."""
+    return OpenAI(api_key=api_key, base_url=base_url)
+
+# =============================================================================
+# Database Operations
+# =============================================================================
+def fetch_chat_history(supabase: Client, limit: int = 20) -> list:
+    """Fetch the last N messages from chat_logs."""
+    try:
+        response = supabase.table("chat_logs") \
+            .select("*") \
+            .order("created_at", desc=True) \
+            .limit(limit) \
+            .execute()
+        # Reverse to get chronological order
+        return list(reversed(response.data)) if response.data else []
+    except Exception as e:
+        st.error(f"Error fetching chat history: {e}")
+        return []
+
+def save_chat_message(supabase: Client, role: str, content: str):
+    """Save a message to chat_logs."""
+    try:
+        supabase.table("chat_logs").insert({
+            "role": role,
+            "content": content
+        }).execute()
+    except Exception as e:
+        st.error(f"Error saving message: {e}")
+
+def fetch_active_vocab(supabase: Client) -> list:
+    """Fetch active vocabulary from vocab_vault."""
+    try:
+        response = supabase.table("vocab_vault") \
+            .select("*") \
+            .eq("status", "active") \
+            .execute()
+        return response.data if response.data else []
+    except Exception as e:
+        st.error(f"Error fetching vocabulary: {e}")
+        return []
+
+def save_vocab(supabase: Client, phrase: str, note: str):
+    """Save a new phrase to vocab_vault."""
+    try:
+        supabase.table("vocab_vault").insert({
+            "target_phrase": phrase,
+            "note": note,
+            "status": "active",
+            "usage_count": 0
+        }).execute()
+        return True
+    except Exception as e:
+        st.error(f"Error saving vocabulary: {e}")
+        return False
+
+def update_vocab_usage(supabase: Client, phrase_id: int, new_count: int):
+    """Update the usage count for a vocabulary item."""
+    try:
+        supabase.table("vocab_vault").update({
+            "usage_count": new_count
+        }).eq("id", phrase_id).execute()
+    except Exception as e:
+        st.error(f"Error updating vocabulary usage: {e}")
+
+def fetch_feedback_for_input(supabase: Client, user_input: str) -> dict | None:
+    """Fetch AI feedback for a specific user input."""
+    try:
+        response = supabase.table("ai_feedback") \
+            .select("*") \
+            .eq("user_input", user_input) \
+            .limit(1) \
+            .execute()
+        return response.data[0] if response.data else None
+    except Exception:
+        return None
+
+def save_ai_feedback(supabase: Client, user_input: str, better_version: str, grammar_point: str):
+    """Save AI feedback analysis."""
+    try:
+        supabase.table("ai_feedback").insert({
+            "user_input": user_input,
+            "better_version": better_version,
+            "grammar_point": grammar_point,
+            "is_reviewed": False
+        }).execute()
+    except Exception as e:
+        st.error(f"Error saving feedback: {e}")
+
+def fetch_all_vocab(supabase: Client) -> list:
+    """Fetch all vocabulary items."""
+    try:
+        response = supabase.table("vocab_vault") \
+            .select("*") \
+            .order("created_at", desc=True) \
+            .execute()
+        return response.data if response.data else []
+    except Exception as e:
+        st.error(f"Error fetching vocabulary: {e}")
+        return []
+
+def mark_vocab_mastered(supabase: Client, vocab_id: int):
+    """Mark a vocabulary item as mastered."""
+    try:
+        supabase.table("vocab_vault").update({
+            "status": "mastered"
+        }).eq("id", vocab_id).execute()
+    except Exception as e:
+        st.error(f"Error updating vocabulary: {e}")
+
+def delete_vocab(supabase: Client, vocab_id: int):
+    """Delete a vocabulary item."""
+    try:
+        supabase.table("vocab_vault").delete().eq("id", vocab_id).execute()
+    except Exception as e:
+        st.error(f"Error deleting vocabulary: {e}")
+
+# =============================================================================
+# LLM Operations
+# =============================================================================
+def build_system_prompt(about_me: str, vocab_words: list) -> str:
+    """Build the system prompt with injected vocabulary."""
+    base_prompt = f"""You are NativeEcho, a friendly and encouraging AI English coach. Your role is to help users improve their English to sound more native and natural.
+
+**User Profile:**
+{about_me}
+
+**Your Approach:**
+1. Respond naturally to the user's messages in a conversational way
+2. Gently correct any grammar or phrasing issues when appropriate
+3. Suggest more native-sounding alternatives when relevant
+4. Be encouraging and supportive
+5. Adapt your language complexity to match the user's level
+6. Focus on practical, everyday English usage"""
+
+    # Inject vocabulary words if available
+    if vocab_words:
+        selected = random.sample(vocab_words, min(3, len(vocab_words)))
+        phrases = [v["target_phrase"] for v in selected]
+        vocab_injection = f"""
+
+**Secret Mission (don't mention this explicitly):**
+Try to naturally incorporate these phrases/words the user is learning into your responses when contextually appropriate: {', '.join(phrases)}
+If you use any of them, subtly highlight how they fit naturally in conversation."""
+        base_prompt += vocab_injection
+
+    return base_prompt
+
+def get_chat_response(client: OpenAI, model: str, system_prompt: str, messages: list) -> str:
+    """Get a response from the LLM."""
+    try:
+        formatted_messages = [{"role": "system", "content": system_prompt}]
+        for msg in messages:
+            formatted_messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
+        
+        response = client.chat.completions.create(
+            model=model,
+            messages=formatted_messages,
+            temperature=0.7,
+            max_tokens=1024
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Error getting response: {e}"
+
+def analyze_user_input(client: OpenAI, model: str, user_input: str) -> dict:
+    """Analyze user input for grammar and suggest improvements (The Polisher)."""
+    analysis_prompt = """You are an English language analyst. Analyze the following user input and provide:
+1. A more native-sounding version (if improvements can be made)
+2. A brief explanation of any grammar points or improvements
+
+If the input is already perfect or very natural, acknowledge that.
+
+Respond in this exact JSON format:
+{
+    "better_version": "the improved sentence or 'Original is great!' if no changes needed",
+    "grammar_point": "brief explanation of changes or 'Excellent use of English!' if perfect"
+}
+
+User input to analyze:"""
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": analysis_prompt},
+                {"role": "user", "content": user_input}
+            ],
+            temperature=0.3,
+            max_tokens=256
+        )
+        
+        content = response.choices[0].message.content
+        # Parse the JSON response
+        import json
+        # Try to extract JSON from the response
+        try:
+            # Handle potential markdown code blocks
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+            result = json.loads(content.strip())
+            return result
+        except json.JSONDecodeError:
+            return {
+                "better_version": "Unable to analyze",
+                "grammar_point": "Analysis unavailable"
+            }
+    except Exception as e:
+        return {
+            "better_version": "Error during analysis",
+            "grammar_point": str(e)
+        }
+
+# =============================================================================
+# Sidebar UI
+# =============================================================================
+def render_sidebar():
+    """Render the sidebar with settings and vocabulary management."""
+    with st.sidebar:
+        st.title("⚙️ Settings")
+        
+        # API Settings Section
+        st.subheader("🔑 API Configuration")
+        
+        # Load defaults from secrets
+        default_api_key = st.secrets["siliconflow"]["api_key"]
+        default_base_url = st.secrets["siliconflow"]["base_url"]
+        default_model = st.secrets["siliconflow"]["model"]
+        
+        api_key = st.text_input(
+            "API Key",
+            value=default_api_key,
+            type="password",
+            help="Your SiliconFlow API key"
+        )
+        
+        model_name = st.text_input(
+            "Model Name",
+            value=default_model,
+            help="The model to use for chat"
+        )
+        
+        base_url = st.text_input(
+            "Base URL",
+            value=default_base_url,
+            help="API endpoint URL"
+        )
+        
+        st.divider()
+        
+        # Long-Term Memory Section
+        st.subheader("🧠 Long-Term Memory")
+        
+        about_me = st.text_area(
+            "About Me",
+            value=st.session_state.get("about_me", "I am an IELTS 7.0 learner. I want to sound like a native American speaker."),
+            height=100,
+            help="Tell the AI about yourself and your learning goals"
+        )
+        
+        # Store in session state
+        st.session_state.about_me = about_me
+        
+        st.divider()
+        
+        # Vocabulary Vault Section
+        st.subheader("📚 Vocabulary Vault")
+        
+        if st.button("📋 View My Vocabulary", use_container_width=True):
+            st.session_state.show_vocab_modal = True
+        
+        # Quick stats
+        if "supabase" in st.session_state:
+            vocab = fetch_all_vocab(st.session_state.supabase)
+            active_count = sum(1 for v in vocab if v.get("status") == "active")
+            mastered_count = sum(1 for v in vocab if v.get("status") == "mastered")
+            st.caption(f"📊 Active: {active_count} | Mastered: {mastered_count}")
+        
+        st.divider()
+        
+        # Clear Chat Button
+        if st.button("🗑️ Clear Chat History", use_container_width=True, type="secondary"):
+            st.session_state.messages = []
+            st.rerun()
+        
+        return api_key, model_name, base_url, about_me
+
+# =============================================================================
+# Main Chat UI
+# =============================================================================
+def render_chat_interface(supabase: Client, client: OpenAI, model: str, about_me: str):
+    """Render the main chat interface."""
+    st.title("🗣️ NativeEcho")
+    st.caption("Your AI English Coach - Practice natural, native-sounding English")
+    
+    # Initialize messages from database if not in session state
+    if "messages" not in st.session_state:
+        st.session_state.messages = fetch_chat_history(supabase)
+    
+    # Add to Learning Plan expander
+    with st.expander("➕ Add to Learning Plan", expanded=False):
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            new_phrase = st.text_input("Phrase/Word to learn", placeholder="e.g., rain check")
+        with col2:
+            new_note = st.text_input("Note", placeholder="e.g., reschedule")
+        
+        if st.button("Add to Vocabulary", type="primary"):
+            if new_phrase:
+                if save_vocab(supabase, new_phrase, new_note):
+                    st.success(f"Added '{new_phrase}' to your vocabulary!")
+                    st.rerun()
+            else:
+                st.warning("Please enter a phrase or word to learn.")
+    
+    st.divider()
+    
+    # Display chat messages
+    for i, message in enumerate(st.session_state.messages):
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            
+            # Show feedback for user messages
+            if message["role"] == "user":
+                feedback = fetch_feedback_for_input(supabase, message["content"])
+                if feedback:
+                    with st.expander("💡 Language Feedback", expanded=False):
+                        st.markdown(f"**Native version:** {feedback.get('better_version', 'N/A')}")
+                        st.markdown(f"**Tip:** {feedback.get('grammar_point', 'N/A')}")
+    
+    # Chat input
+    if prompt := st.chat_input("Type your message in English..."):
+        # Add user message to chat
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        save_chat_message(supabase, "user", prompt)
+        
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        
+        # Get active vocabulary for injection
+        active_vocab = fetch_active_vocab(supabase)
+        system_prompt = build_system_prompt(about_me, active_vocab)
+        
+        # Get AI response
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                response = get_chat_response(
+                    client, model, system_prompt, 
+                    st.session_state.messages
+                )
+                st.markdown(response)
+        
+        # Save assistant response
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        save_chat_message(supabase, "assistant", response)
+        
+        # Background analysis (The Polisher)
+        with st.spinner("Analyzing your English..."):
+            analysis = analyze_user_input(client, model, prompt)
+            save_ai_feedback(
+                supabase,
+                prompt,
+                analysis.get("better_version", ""),
+                analysis.get("grammar_point", "")
+            )
+        
+        st.rerun()
+
+def render_vocab_modal(supabase: Client):
+    """Render vocabulary management modal."""
+    if st.session_state.get("show_vocab_modal", False):
+        st.subheader("📚 My Vocabulary Vault")
+        
+        vocab = fetch_all_vocab(supabase)
+        
+        if not vocab:
+            st.info("Your vocabulary vault is empty. Add some phrases to learn!")
+        else:
+            # Tabs for active and mastered
+            tab1, tab2 = st.tabs(["🎯 Active", "✅ Mastered"])
+            
+            with tab1:
+                active_vocab = [v for v in vocab if v.get("status") == "active"]
+                if active_vocab:
+                    for v in active_vocab:
+                        col1, col2, col3 = st.columns([3, 1, 1])
+                        with col1:
+                            st.markdown(f"**{v['target_phrase']}**")
+                            if v.get('note'):
+                                st.caption(v['note'])
+                        with col2:
+                            st.caption(f"Used: {v.get('usage_count', 0)}x")
+                        with col3:
+                            if st.button("✅", key=f"master_{v['id']}", help="Mark as mastered"):
+                                mark_vocab_mastered(supabase, v['id'])
+                                st.rerun()
+                        st.divider()
+                else:
+                    st.info("No active vocabulary items.")
+            
+            with tab2:
+                mastered_vocab = [v for v in vocab if v.get("status") == "mastered"]
+                if mastered_vocab:
+                    for v in mastered_vocab:
+                        col1, col2 = st.columns([4, 1])
+                        with col1:
+                            st.markdown(f"**{v['target_phrase']}**")
+                            if v.get('note'):
+                                st.caption(v['note'])
+                        with col2:
+                            if st.button("🗑️", key=f"delete_{v['id']}", help="Delete"):
+                                delete_vocab(supabase, v['id'])
+                                st.rerun()
+                        st.divider()
+                else:
+                    st.info("No mastered vocabulary items yet.")
+        
+        if st.button("Close", use_container_width=True):
+            st.session_state.show_vocab_modal = False
+            st.rerun()
+        
+        st.divider()
+
+# =============================================================================
+# Main App
+# =============================================================================
+def main():
+    """Main application entry point."""
+    # Initialize Supabase
+    try:
+        supabase = init_supabase()
+        st.session_state.supabase = supabase
+    except Exception as e:
+        st.error(f"Failed to connect to database: {e}")
+        st.stop()
+    
+    # Render sidebar and get settings
+    api_key, model_name, base_url, about_me = render_sidebar()
+    
+    # Initialize OpenAI client
+    try:
+        client = get_openai_client(api_key, base_url)
+    except Exception as e:
+        st.error(f"Failed to initialize API client: {e}")
+        st.stop()
+    
+    # Render vocabulary modal if active
+    render_vocab_modal(supabase)
+    
+    # Render main chat interface
+    render_chat_interface(supabase, client, model_name, about_me)
+
+if __name__ == "__main__":
+    main()
