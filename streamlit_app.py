@@ -106,9 +106,20 @@ section[data-testid="stSidebar"] hr {
 }
 
 /* ============ CHAT MESSAGE STYLES ============ */
-/* Hide chat message avatars */
-[data-testid="stChatMessageAvatarContainer"] {
+/* Hide ALL chat message avatars - multiple selectors for compatibility */
+[data-testid="stChatMessageAvatarContainer"],
+.stChatMessage > div:first-child:has(img),
+.stChatMessage > div:first-child:has(svg),
+.stChatMessage [data-testid="chatAvatarIcon-user"],
+.stChatMessage [data-testid="chatAvatarIcon-assistant"],
+.stChatMessage img[alt="user"],
+.stChatMessage img[alt="assistant"],
+.stChatMessage .stAvatar,
+div[data-testid="stChatMessage"] > div:first-child {
     display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
 }
 
 /* Compact chat messages */
@@ -116,6 +127,7 @@ section[data-testid="stSidebar"] hr {
     padding: 0.5rem 0.75rem !important;
     margin-bottom: 0.4rem !important;
     gap: 0 !important;
+    flex-direction: column !important;
 }
 
 [data-testid="stChatMessageContent"] {
