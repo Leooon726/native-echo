@@ -217,7 +217,26 @@ div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
 [data-testid="stChatInput"] textarea {
     font-size: 0.9rem !important;
 }
+
+/* Prevent password autofill styling on vocab input */
+[data-testid="stPopoverBody"] input {
+    -webkit-text-security: none !important;
+}
 </style>
+
+<script>
+// Disable autocomplete on vocab input to prevent browser password detection
+(function() {
+    const observer = new MutationObserver(function(mutations) {
+        document.querySelectorAll('[data-testid="stPopoverBody"] input').forEach(function(input) {
+            input.setAttribute('autocomplete', 'off');
+            input.setAttribute('data-form-type', 'other');
+            input.setAttribute('data-lpignore', 'true');
+        });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+})();
+</script>
 """, unsafe_allow_html=True)
 
 # =============================================================================
