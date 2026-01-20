@@ -25,6 +25,87 @@ st.set_page_config(
 )
 
 # =============================================================================
+# Custom CSS - Hide avatars, style chat bubbles
+# =============================================================================
+st.markdown("""
+<style>
+/* Hide chat message avatars */
+.stChatMessage > div:first-child {
+    display: none !important;
+}
+
+/* Adjust chat message container to remove avatar space */
+.stChatMessage {
+    padding-left: 0 !important;
+}
+
+/* Style user messages - right aligned with blue background */
+[data-testid="stChatMessage"][data-testid*="user"] {
+    background-color: #e3f2fd !important;
+    border-radius: 12px !important;
+    margin: 8px 0 !important;
+    padding: 12px !important;
+}
+
+/* Style assistant messages - left aligned with gray background */
+[data-testid="stChatMessage"][data-testid*="assistant"] {
+    background-color: #f5f5f5 !important;
+    border-radius: 12px !important;
+    margin: 8px 0 !important;
+    padding: 12px !important;
+}
+
+/* Alternative selector for chat messages */
+.stChatMessage[data-testid="chatAvatarIcon-user"] {
+    background-color: #e3f2fd !important;
+}
+
+.stChatMessage[data-testid="chatAvatarIcon-assistant"] {
+    background-color: #f5f5f5 !important;
+}
+
+/* Style based on aria-label */
+[data-testid="stChatMessageContent"] {
+    width: 100% !important;
+}
+
+/* User message bubble */
+div[data-testid="stChatMessage"]:has(img[alt="user"]),
+div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border-radius: 16px 16px 4px 16px !important;
+    margin: 8px 0 8px 20% !important;
+    padding: 12px 16px !important;
+}
+
+div[data-testid="stChatMessage"]:has(img[alt="user"]) p,
+div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) p {
+    color: white !important;
+}
+
+/* Assistant message bubble */
+div[data-testid="stChatMessage"]:has(img[alt="assistant"]),
+div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
+    background: #f0f2f6 !important;
+    border-radius: 16px 16px 16px 4px !important;
+    margin: 8px 20% 8px 0 !important;
+    padding: 12px 16px !important;
+}
+
+/* Hide the avatar image */
+[data-testid="stChatMessageAvatarContainer"] {
+    display: none !important;
+}
+
+/* Ensure message content takes full width */
+[data-testid="stChatMessageContent"] {
+    margin-left: 0 !important;
+    max-width: 100% !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# =============================================================================
 # Default Configuration Values
 # =============================================================================
 DEFAULT_CONFIG = {
