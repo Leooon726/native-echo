@@ -225,32 +225,31 @@ div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
 }
 
 /* ============ MANAGE APP BUTTON (bottom right) ============ */
-/* Make it subtle by default, fully visible on hover */
+/* Make it nearly invisible by default, visible on hover */
+.stApp > div:last-child,
 [data-testid="manage-app-button"],
 .stStatusWidget,
-#MainMenu,
-button[kind="header"] {
-    opacity: 0.15 !important;
-    transform: scale(0.8) !important;
-    transition: all 0.2s ease !important;
+.reportview-container .main footer,
+footer {
+    opacity: 0.05 !important;
+    transform: scale(0.5) !important;
+    transform-origin: bottom right !important;
+    transition: all 0.3s ease !important;
 }
 
+.stApp > div:last-child:hover,
 [data-testid="manage-app-button"]:hover,
-.stStatusWidget:hover {
+.stStatusWidget:hover,
+footer:hover {
     opacity: 1 !important;
     transform: scale(1) !important;
 }
 
-/* Also style the bottom status area */
-footer, 
-[data-testid="stStatusWidget"] {
-    opacity: 0.15 !important;
-    transition: opacity 0.2s ease !important;
-}
-
-footer:hover,
-[data-testid="stStatusWidget"]:hover {
-    opacity: 1 !important;
+/* Hide the hamburger menu and footer completely on mobile */
+@media (max-width: 768px) {
+    #MainMenu, footer, .stStatusWidget {
+        display: none !important;
+    }
 }
 </style>
 
@@ -301,20 +300,10 @@ def get_config_value(section: str, key: str, default: str = "") -> str:
     return DEFAULT_CONFIG.get(default_key, default)
 
 def has_valid_config() -> bool:
-    """Check if we have valid configuration (either from secrets or session state)."""
-    # Check if secrets exist
-    try:
-        _ = st.secrets["supabase"]["url"]
-        _ = st.secrets["siliconflow"]["api_key"]
-        return True
-    except (KeyError, FileNotFoundError):
-        pass
-    
-    # Check if session state has config
-    if st.session_state.get("config_saved", False):
-        return True
-    
-    return False
+    """Check if we have valid configuration - always True since we have DEFAULT_CONFIG."""
+    # We have embedded defaults, so always return True
+    # Users can still override via secrets or session state
+    return True
 
 def render_setup_page():
     """Render the initial setup page when secrets are not configured."""
