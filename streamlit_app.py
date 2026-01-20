@@ -595,35 +595,6 @@ def render_sidebar():
         
         st.divider()
         
-        # API Settings Section
-        st.subheader("🔑 API Configuration")
-        
-        # Load defaults from config (secrets or session state)
-        default_api_key = get_config_value("siliconflow", "api_key")
-        default_base_url = get_config_value("siliconflow", "base_url")
-        default_model = get_config_value("siliconflow", "model")
-        
-        api_key = st.text_input(
-            "API Key",
-            value=default_api_key,
-            type="password",
-            help="Your SiliconFlow API key"
-        )
-        
-        model_name = st.text_input(
-            "Model Name",
-            value=default_model,
-            help="The model to use for chat"
-        )
-        
-        base_url = st.text_input(
-            "Base URL",
-            value=default_base_url,
-            help="API endpoint URL"
-        )
-        
-        st.divider()
-        
         # Long-Term Memory Section
         st.subheader("🧠 Long-Term Memory")
         
@@ -644,15 +615,31 @@ def render_sidebar():
             st.session_state.messages = []
             st.rerun()
         
-        # Reset Configuration Button
-        if st.button("🔄 Reset Configuration", use_container_width=True, type="secondary"):
-            st.session_state.config_saved = False
-            st.session_state.pop("supabase_url", None)
-            st.session_state.pop("supabase_key", None)
-            st.session_state.pop("siliconflow_api_key", None)
-            st.session_state.pop("siliconflow_base_url", None)
-            st.session_state.pop("siliconflow_model", None)
-            st.rerun()
+        # API Settings Section (collapsed by default)
+        with st.expander("🔑 API Configuration", expanded=False):
+            # Load defaults from config (secrets or session state)
+            default_api_key = get_config_value("siliconflow", "api_key")
+            default_base_url = get_config_value("siliconflow", "base_url")
+            default_model = get_config_value("siliconflow", "model")
+            
+            api_key = st.text_input(
+                "API Key",
+                value=default_api_key,
+                type="password",
+                help="Your SiliconFlow API key"
+            )
+            
+            model_name = st.text_input(
+                "Model Name",
+                value=default_model,
+                help="The model to use for chat"
+            )
+            
+            base_url = st.text_input(
+                "Base URL",
+                value=default_base_url,
+                help="API endpoint URL"
+            )
         
         return api_key, model_name, base_url, about_me
 
