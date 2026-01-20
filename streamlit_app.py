@@ -25,57 +25,115 @@ st.set_page_config(
 )
 
 # =============================================================================
-# Custom CSS - Hide avatars, style chat bubbles
+# Custom CSS - Compact UI, hide avatars, style chat bubbles
 # =============================================================================
 st.markdown("""
 <style>
+/* ============ COMPACT GLOBAL STYLES ============ */
+/* Reduce main container padding */
+.stMainBlockContainer {
+    padding-top: 1rem !important;
+    padding-bottom: 0 !important;
+}
+
+/* Compact title */
+h1 {
+    font-size: 1.5rem !important;
+    margin-bottom: 0.25rem !important;
+}
+
+/* Smaller caption */
+.stCaption {
+    font-size: 0.75rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+/* Reduce block spacing */
+.stElementContainer {
+    margin-bottom: 0.25rem !important;
+}
+
+/* Compact buttons */
+.stButton > button {
+    padding: 0.25rem 0.75rem !important;
+    font-size: 0.85rem !important;
+}
+
+/* Compact text inputs */
+.stTextInput > div > div > input {
+    padding: 0.4rem 0.6rem !important;
+    font-size: 0.85rem !important;
+}
+
+/* Compact text area */
+.stTextArea > div > div > textarea {
+    font-size: 0.85rem !important;
+}
+
+/* Reduce expander padding */
+.streamlit-expanderHeader {
+    padding: 0.4rem 0.6rem !important;
+    font-size: 0.85rem !important;
+}
+
+.streamlit-expanderContent {
+    padding: 0.5rem !important;
+}
+
+/* ============ SIDEBAR COMPACT ============ */
+section[data-testid="stSidebar"] {
+    width: 280px !important;
+}
+
+section[data-testid="stSidebar"] .stElementContainer {
+    margin-bottom: 0.2rem !important;
+}
+
+section[data-testid="stSidebar"] h1 {
+    font-size: 1.2rem !important;
+}
+
+section[data-testid="stSidebar"] h2, 
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] .stSubheader {
+    font-size: 0.9rem !important;
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.25rem !important;
+}
+
+section[data-testid="stSidebar"] hr {
+    margin: 0.5rem 0 !important;
+}
+
+/* ============ CHAT MESSAGE STYLES ============ */
 /* Hide chat message avatars */
-.stChatMessage > div:first-child {
+[data-testid="stChatMessageAvatarContainer"] {
     display: none !important;
 }
 
-/* Adjust chat message container to remove avatar space */
+/* Compact chat messages */
 .stChatMessage {
-    padding-left: 0 !important;
+    padding: 0.5rem 0.75rem !important;
+    margin-bottom: 0.4rem !important;
+    gap: 0 !important;
 }
 
-/* Style user messages - right aligned with blue background */
-[data-testid="stChatMessage"][data-testid*="user"] {
-    background-color: #e3f2fd !important;
-    border-radius: 12px !important;
-    margin: 8px 0 !important;
-    padding: 12px !important;
-}
-
-/* Style assistant messages - left aligned with gray background */
-[data-testid="stChatMessage"][data-testid*="assistant"] {
-    background-color: #f5f5f5 !important;
-    border-radius: 12px !important;
-    margin: 8px 0 !important;
-    padding: 12px !important;
-}
-
-/* Alternative selector for chat messages */
-.stChatMessage[data-testid="chatAvatarIcon-user"] {
-    background-color: #e3f2fd !important;
-}
-
-.stChatMessage[data-testid="chatAvatarIcon-assistant"] {
-    background-color: #f5f5f5 !important;
-}
-
-/* Style based on aria-label */
 [data-testid="stChatMessageContent"] {
-    width: 100% !important;
+    margin-left: 0 !important;
+    max-width: 100% !important;
+}
+
+[data-testid="stChatMessageContent"] p {
+    font-size: 0.9rem !important;
+    margin-bottom: 0.25rem !important;
 }
 
 /* User message bubble */
 div[data-testid="stChatMessage"]:has(img[alt="user"]),
 div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    border-radius: 16px 16px 4px 16px !important;
-    margin: 8px 0 8px 20% !important;
-    padding: 12px 16px !important;
+    border-radius: 12px 12px 2px 12px !important;
+    margin-left: 15% !important;
 }
 
 div[data-testid="stChatMessage"]:has(img[alt="user"]) p,
@@ -87,37 +145,50 @@ div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) p {
 div[data-testid="stChatMessage"]:has(img[alt="assistant"]),
 div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
     background: #f0f2f6 !important;
-    border-radius: 16px 16px 16px 4px !important;
-    margin: 8px 20% 8px 0 !important;
-    padding: 12px 16px !important;
+    border-radius: 12px 12px 12px 2px !important;
+    margin-right: 15% !important;
 }
 
-/* Hide the avatar image */
-[data-testid="stChatMessageAvatarContainer"] {
-    display: none !important;
+/* Compact feedback expander inside chat */
+.stChatMessage .streamlit-expanderHeader {
+    padding: 0.2rem 0.5rem !important;
+    font-size: 0.75rem !important;
 }
 
-/* Ensure message content takes full width */
-[data-testid="stChatMessageContent"] {
-    margin-left: 0 !important;
-    max-width: 100% !important;
+.stChatMessage .streamlit-expanderContent {
+    padding: 0.3rem 0.5rem !important;
+    font-size: 0.8rem !important;
 }
 
-/* Style the Add to Learning Plan popover button */
-[data-testid="stPopover"] button {
-    border-radius: 50% !important;
-    width: 40px !important;
-    height: 40px !important;
+/* ============ ADD BUTTON (POPOVER) ============ */
+/* Square button style */
+[data-testid="stPopover"] > button {
+    border-radius: 6px !important;
+    min-width: 36px !important;
+    width: 36px !important;
+    height: 36px !important;
     padding: 0 !important;
-    font-size: 20px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    font-size: 1.2rem !important;
+    line-height: 1 !important;
 }
 
-/* Popover content styling */
+/* Popover content */
 [data-testid="stPopoverBody"] {
-    min-width: 250px !important;
+    min-width: 220px !important;
+    padding: 0.5rem !important;
+}
+
+[data-testid="stPopoverBody"] .stTextInput {
+    margin-bottom: 0.3rem !important;
+}
+
+/* ============ CHAT INPUT ============ */
+[data-testid="stChatInput"] {
+    padding: 0.5rem 0 !important;
+}
+
+[data-testid="stChatInput"] textarea {
+    font-size: 0.9rem !important;
 }
 </style>
 """, unsafe_allow_html=True)
