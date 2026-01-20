@@ -11,6 +11,7 @@ A personal AI English coach with:
 import streamlit as st
 import random
 import json
+from concurrent.futures import ThreadPoolExecutor
 from openai import OpenAI
 from supabase import create_client, Client
 
@@ -717,22 +718,28 @@ def render_chat_interface(supabase: Client, client: OpenAI, model: str, about_me
         active_vocab = fetch_active_vocab(supabase)
         system_prompt = build_system_prompt(about_me, active_vocab)
         
-        # Get AI response
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                response = get_chat_response(
-                    client, model, system_prompt, 
-                    st.session_state.messages
-                )
-                st.markdown(response)
-        
-        # Save assistant response
-        st.session_state.messages.append({"role": "assistant", "content": response})
-        save_chat_message(supabase, "assistant", response)
-        
-        # Background analysis (The Polisher)
-        with st.spinner("Analyzing your English..."):
-            analysis = analyze_user_input(client, model, prompt)
+        # Run chat response and feedback analysis in parallel
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            # Submit both tasks
+            chat_future = executor.submit(
+                get_chat_response, client, model, system_prompt, st.session_state.messages
+            )
+            analysis_future = executor.submit(
+                analyze_user_input, client, model, prompt
+            )
+            
+            # Display chat response as soon as it's ready
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    response = chat_future.result()
+                    st.markdown(response)
+            
+            # Save assistant response
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            save_chat_message(supabase, "assistant", response)
+            
+            # Get analysis result (should be ready or nearly ready)
+            analysis = analysis_future.result()
             save_ai_feedback(
                 supabase,
                 prompt,
