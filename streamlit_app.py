@@ -102,6 +102,23 @@ div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
     margin-left: 0 !important;
     max-width: 100% !important;
 }
+
+/* Style the Add to Learning Plan popover button */
+[data-testid="stPopover"] button {
+    border-radius: 50% !important;
+    width: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    font-size: 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Popover content styling */
+[data-testid="stPopoverBody"] {
+    min-width: 250px !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -543,24 +560,6 @@ def render_chat_interface(supabase: Client, client: OpenAI, model: str, about_me
     if "messages" not in st.session_state:
         st.session_state.messages = fetch_chat_history(supabase)
     
-    # Add to Learning Plan expander
-    with st.expander("➕ Add to Learning Plan", expanded=False):
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            new_phrase = st.text_input("Phrase/Word to learn", placeholder="e.g., rain check")
-        with col2:
-            new_note = st.text_input("Note", placeholder="e.g., reschedule")
-        
-        if st.button("Add to Vocabulary", type="primary"):
-            if new_phrase:
-                if save_vocab(supabase, new_phrase, new_note):
-                    st.success(f"Added '{new_phrase}' to your vocabulary!")
-                    st.rerun()
-            else:
-                st.warning("Please enter a phrase or word to learn.")
-    
-    st.divider()
-    
     # Display chat messages
     for i, message in enumerate(st.session_state.messages):
         with st.chat_message(message["role"]):
@@ -573,6 +572,23 @@ def render_chat_interface(supabase: Client, client: OpenAI, model: str, about_me
                     with st.expander("💡 Language Feedback", expanded=False):
                         st.markdown(f"**Native version:** {feedback.get('better_version', 'N/A')}")
                         st.markdown(f"**Tip:** {feedback.get('grammar_point', 'N/A')}")
+    
+    # Input area with Add to Learning Plan button
+    input_col, add_col = st.columns([10, 1])
+    
+    with add_col:
+        with st.popover("➕", help="Add to Learning Plan"):
+            st.markdown("**Add to Learning Plan**")
+            new_phrase = st.text_input("Phrase/Word", placeholder="e.g., rain check", key="vocab_phrase")
+            new_note = st.text_input("Note", placeholder="e.g., reschedule", key="vocab_note")
+            
+            if st.button("Add", type="primary", use_container_width=True):
+                if new_phrase:
+                    if save_vocab(supabase, new_phrase, new_note):
+                        st.success(f"Added '{new_phrase}'!")
+                        st.rerun()
+                else:
+                    st.warning("Please enter a phrase.")
     
     # Chat input
     if prompt := st.chat_input("Type your message in English..."):
