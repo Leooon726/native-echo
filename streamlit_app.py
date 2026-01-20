@@ -634,21 +634,6 @@ def render_sidebar():
         
         st.divider()
         
-        # Vocabulary Vault Section
-        st.subheader("📚 Vocabulary Vault")
-        
-        if st.button("📋 View My Vocabulary", use_container_width=True):
-            st.session_state.show_vocab_modal = True
-        
-        # Quick stats
-        if "supabase" in st.session_state:
-            vocab = fetch_all_vocab(st.session_state.supabase)
-            active_count = sum(1 for v in vocab if v.get("status") == "active")
-            mastered_count = sum(1 for v in vocab if v.get("status") == "mastered")
-            st.caption(f"📊 Active: {active_count} | Mastered: {mastered_count}")
-        
-        st.divider()
-        
         # Clear Chat Button
         if st.button("🗑️ Clear Chat History", use_container_width=True, type="secondary"):
             st.session_state.messages = []
@@ -671,9 +656,6 @@ def render_sidebar():
 # =============================================================================
 def render_chat_interface(supabase: Client, client: OpenAI, model: str, about_me: str):
     """Render the main chat interface."""
-    st.title("🗣️ NativeEcho")
-    st.caption("Your AI English Coach - Practice natural, native-sounding English")
-    
     # Initialize messages from database if not in session state
     if "messages" not in st.session_state:
         st.session_state.messages = fetch_chat_history(supabase)
@@ -749,60 +731,55 @@ def render_chat_interface(supabase: Client, client: OpenAI, model: str, about_me
         
         st.rerun()
 
-def render_vocab_modal(supabase: Client):
-    """Render vocabulary management modal."""
-    if st.session_state.get("show_vocab_modal", False):
-        st.subheader("📚 My Vocabulary Vault")
+def render_vocab_tab(supabase: Client):
+    """Render vocabulary management tab."""
+    # Add new vocabulary input at top
+    col1, col2 = st.columns([5, 1])
+    with col1:
+        new_phrase = st.text_input("Add new word/phrase", placeholder="e.g., rain check", key="vocab_tab_phrase", label_visibility="collapsed")
+    with col2:
+        if st.button("Add", type="primary", key="vocab_tab_add_btn"):
+            if new_phrase:
+                if save_vocab(supabase, new_phrase, ""):
+                    st.rerun()
+    
+    st.divider()
+    
+    vocab = fetch_all_vocab(supabase)
+    
+    if not vocab:
+        st.info("Your vocabulary vault is empty. Add some phrases to learn!")
+    else:
+        # Sub-tabs for active and mastered
+        active_tab, mastered_tab = st.tabs(["🎯 Active", "✅ Mastered"])
         
-        vocab = fetch_all_vocab(supabase)
+        with active_tab:
+            active_vocab = [v for v in vocab if v.get("status") == "active"]
+            if active_vocab:
+                for v in active_vocab:
+                    col1, col2 = st.columns([5, 1])
+                    with col1:
+                        st.markdown(f"**{v['target_phrase']}**")
+                    with col2:
+                        if st.button("✅", key=f"master_{v['id']}", help="Mark as mastered"):
+                            mark_vocab_mastered(supabase, v['id'])
+                            st.rerun()
+            else:
+                st.info("No active vocabulary items.")
         
-        if not vocab:
-            st.info("Your vocabulary vault is empty. Add some phrases to learn!")
-        else:
-            # Tabs for active and mastered
-            tab1, tab2 = st.tabs(["🎯 Active", "✅ Mastered"])
-            
-            with tab1:
-                active_vocab = [v for v in vocab if v.get("status") == "active"]
-                if active_vocab:
-                    for v in active_vocab:
-                        col1, col2, col3 = st.columns([3, 1, 1])
-                        with col1:
-                            st.markdown(f"**{v['target_phrase']}**")
-                            if v.get('note'):
-                                st.caption(v['note'])
-                        with col2:
-                            st.caption(f"Used: {v.get('usage_count', 0)}x")
-                        with col3:
-                            if st.button("✅", key=f"master_{v['id']}", help="Mark as mastered"):
-                                mark_vocab_mastered(supabase, v['id'])
-                                st.rerun()
-                        st.divider()
-                else:
-                    st.info("No active vocabulary items.")
-            
-            with tab2:
-                mastered_vocab = [v for v in vocab if v.get("status") == "mastered"]
-                if mastered_vocab:
-                    for v in mastered_vocab:
-                        col1, col2 = st.columns([4, 1])
-                        with col1:
-                            st.markdown(f"**{v['target_phrase']}**")
-                            if v.get('note'):
-                                st.caption(v['note'])
-                        with col2:
-                            if st.button("🗑️", key=f"delete_{v['id']}", help="Delete"):
-                                delete_vocab(supabase, v['id'])
-                                st.rerun()
-                        st.divider()
-                else:
-                    st.info("No mastered vocabulary items yet.")
-        
-        if st.button("Close", use_container_width=True):
-            st.session_state.show_vocab_modal = False
-            st.rerun()
-        
-        st.divider()
+        with mastered_tab:
+            mastered_vocab = [v for v in vocab if v.get("status") == "mastered"]
+            if mastered_vocab:
+                for v in mastered_vocab:
+                    col1, col2 = st.columns([5, 1])
+                    with col1:
+                        st.markdown(f"**{v['target_phrase']}**")
+                    with col2:
+                        if st.button("🗑️", key=f"delete_{v['id']}", help="Delete"):
+                            delete_vocab(supabase, v['id'])
+                            st.rerun()
+            else:
+                st.info("No mastered vocabulary items yet.")
 
 # =============================================================================
 # Main App
@@ -836,11 +813,18 @@ def main():
         st.error(f"Failed to initialize API client: {e}")
         st.stop()
     
-    # Render vocabulary modal if active
-    render_vocab_modal(supabase)
+    # Title
+    st.title("🗣️ NativeEcho")
+    st.caption("Your AI English Coach - Practice natural, native-sounding English")
     
-    # Render main chat interface
-    render_chat_interface(supabase, client, model_name, about_me)
+    # Main tabs: Chat and Vocabulary
+    chat_tab, vocab_tab = st.tabs(["💬 Chat", "📚 Vocabulary"])
+    
+    with chat_tab:
+        render_chat_interface(supabase, client, model_name, about_me)
+    
+    with vocab_tab:
+        render_vocab_tab(supabase)
 
 if __name__ == "__main__":
     main()
