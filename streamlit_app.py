@@ -600,7 +600,7 @@ def render_sidebar():
         
         about_me = st.text_area(
             "About Me",
-            value=st.session_state.get("about_me", "I am an IELTS 7.0 learner. I want to sound like a native American speaker."),
+            value=st.session_state.get("about_me", "I'm a software engineer in an autonomous driving company. I'm 31 years old, married with a 1-year-old daughter. I live in Guangzhou, and my hometown is Fujian province."),
             height=100,
             help="Tell the AI about yourself and your learning goals"
         )
