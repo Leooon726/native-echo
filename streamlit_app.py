@@ -590,7 +590,19 @@ User input to analyze:"""
 def render_sidebar():
     """Render the sidebar with settings and vocabulary management."""
     with st.sidebar:
-        st.title("⚙️ Settings")
+        st.title("🗣️ NativeEcho")
+        
+        # Page Navigation
+        page = st.radio(
+            "Navigate",
+            ["💬 Chat", "📚 Vocabulary"],
+            index=0 if st.session_state.get("current_page", "chat") == "chat" else 1,
+            label_visibility="collapsed",
+            horizontal=True
+        )
+        st.session_state.current_page = "chat" if page == "💬 Chat" else "vocab"
+        
+        st.divider()
         
         # API Settings Section
         st.subheader("🔑 API Configuration")
@@ -815,17 +827,10 @@ def main():
         st.error(f"Failed to initialize API client: {e}")
         st.stop()
     
-    # Title
-    st.title("🗣️ NativeEcho")
-    st.caption("Your AI English Coach - Practice natural, native-sounding English")
-    
-    # Main tabs: Chat and Vocabulary
-    chat_tab, vocab_tab = st.tabs(["💬 Chat", "📚 Vocabulary"])
-    
-    with chat_tab:
+    # Render content based on selected page
+    if st.session_state.get("current_page", "chat") == "chat":
         render_chat_interface(supabase, client, model_name, about_me)
-    
-    with vocab_tab:
+    else:
         render_vocab_tab(supabase)
 
 if __name__ == "__main__":
