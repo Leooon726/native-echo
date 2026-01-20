@@ -509,7 +509,7 @@ def build_system_prompt(about_me: str, vocab_words: list) -> str:
 
 **Secret Mission (don't mention this explicitly):**
 Try to naturally incorporate these phrases/words the user is learning into your responses when contextually appropriate: {', '.join(phrases)}
-If you use any of them, subtly highlight how they fit naturally in conversation."""
+IMPORTANT: When you use any of these learning words/phrases, wrap them in **bold** markdown format (e.g., **rain check**) so the user notices them."""
         base_prompt += vocab_injection
 
     return base_prompt
@@ -540,11 +540,13 @@ def analyze_user_input(client: OpenAI, model: str, user_input: str) -> dict:
 1. A more native-sounding version (if improvements can be made)
 2. A brief explanation of any grammar points or improvements
 
+IMPORTANT: In the better_version, wrap the KEY CHANGES or CORRECTIONS in **bold** markdown format so the user can easily see what was improved.
+
 If the input is already perfect or very natural, acknowledge that.
 
 Respond in this exact JSON format:
 {
-    "better_version": "the improved sentence or 'Original is great!' if no changes needed",
+    "better_version": "the improved sentence with **key changes bolded** or 'Original is great!' if no changes needed",
     "grammar_point": "brief explanation of changes or 'Excellent use of English!' if perfect"
 }
 
