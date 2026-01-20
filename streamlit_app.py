@@ -176,22 +176,37 @@ div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
 /* Square button style */
 [data-testid="stPopover"] > button {
     border-radius: 6px !important;
-    min-width: 36px !important;
-    width: 36px !important;
-    height: 36px !important;
+    min-width: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
     padding: 0 !important;
-    font-size: 1.2rem !important;
+    font-size: 1rem !important;
     line-height: 1 !important;
 }
 
-/* Popover content */
+/* Popover content - wider and compact */
 [data-testid="stPopoverBody"] {
-    min-width: 220px !important;
-    padding: 0.5rem !important;
+    min-width: 320px !important;
+    padding: 0.4rem !important;
 }
 
 [data-testid="stPopoverBody"] .stTextInput {
-    margin-bottom: 0.3rem !important;
+    margin-bottom: 0 !important;
+}
+
+[data-testid="stPopoverBody"] .stTextInput input {
+    padding: 0.3rem 0.5rem !important;
+    font-size: 0.85rem !important;
+}
+
+[data-testid="stPopoverBody"] .stButton button {
+    padding: 0.3rem 0.6rem !important;
+    font-size: 0.8rem !important;
+    height: auto !important;
+}
+
+[data-testid="stPopoverBody"] .stElementContainer {
+    margin-bottom: 0 !important;
 }
 
 /* ============ CHAT INPUT ============ */
@@ -657,21 +672,18 @@ def render_chat_interface(supabase: Client, client: OpenAI, model: str, about_me
                         st.markdown(f"**Tip:** {feedback.get('grammar_point', 'N/A')}")
     
     # Input area with Add to Learning Plan button
-    input_col, add_col = st.columns([10, 1])
+    input_col, add_col = st.columns([12, 1])
     
     with add_col:
-        with st.popover("➕", help="Add to Learning Plan"):
-            st.markdown("**Add to Learning Plan**")
-            new_phrase = st.text_input("Phrase/Word", placeholder="e.g., rain check", key="vocab_phrase")
-            new_note = st.text_input("Note", placeholder="e.g., reschedule", key="vocab_note")
-            
-            if st.button("Add", type="primary", use_container_width=True):
-                if new_phrase:
-                    if save_vocab(supabase, new_phrase, new_note):
-                        st.success(f"Added '{new_phrase}'!")
-                        st.rerun()
-                else:
-                    st.warning("Please enter a phrase.")
+        with st.popover("➕"):
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                new_phrase = st.text_input("Add word/phrase", placeholder="rain check", key="vocab_phrase", label_visibility="collapsed")
+            with col2:
+                if st.button("Add", type="primary", key="add_vocab_btn"):
+                    if new_phrase:
+                        if save_vocab(supabase, new_phrase, ""):
+                            st.rerun()
     
     # Chat input
     if prompt := st.chat_input("Type your message in English..."):
