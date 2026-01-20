@@ -10,7 +10,7 @@ A personal AI English coach with:
 
 import streamlit as st
 import random
-from datetime import datetime
+import json
 from openai import OpenAI
 from supabase import create_client, Client
 
@@ -25,13 +25,128 @@ st.set_page_config(
 )
 
 # =============================================================================
+# Default Configuration Values
+# =============================================================================
+DEFAULT_CONFIG = {
+    "supabase_url": "https://omanedtxaljaltfmqgov.supabase.co",
+    "supabase_key": "sb_publishable_b0XED_AqNr3qecNvPAWZmw_GiNhanD2",
+    "siliconflow_api_key": "sk-vlmhbxgjgllzolnsqunigerenwtwdfsutvaecdpgpvxqyncc",
+    "siliconflow_base_url": "https://api.siliconflow.cn/v1",
+    "siliconflow_model": "deepseek-ai/DeepSeek-V3.2"
+}
+
+# =============================================================================
+# Configuration Helper Functions
+# =============================================================================
+def get_config_value(section: str, key: str, default: str = "") -> str:
+    """Get configuration value from secrets or session state, with fallback to defaults."""
+    # First try st.secrets
+    try:
+        return st.secrets[section][key]
+    except (KeyError, FileNotFoundError):
+        pass
+    
+    # Then try session state
+    session_key = f"{section}_{key}"
+    if session_key in st.session_state:
+        return st.session_state[session_key]
+    
+    # Finally use default config
+    default_key = f"{section}_{key}"
+    return DEFAULT_CONFIG.get(default_key, default)
+
+def has_valid_config() -> bool:
+    """Check if we have valid configuration (either from secrets or session state)."""
+    # Check if secrets exist
+    try:
+        _ = st.secrets["supabase"]["url"]
+        _ = st.secrets["siliconflow"]["api_key"]
+        return True
+    except (KeyError, FileNotFoundError):
+        pass
+    
+    # Check if session state has config
+    if st.session_state.get("config_saved", False):
+        return True
+    
+    return False
+
+def render_setup_page():
+    """Render the initial setup page when secrets are not configured."""
+    st.title("🗣️ NativeEcho Setup")
+    st.markdown("Welcome! Please configure your credentials to get started.")
+    
+    st.info("""
+    **First time here?** You need to configure your database and API credentials.
+    
+    For **Streamlit Community Cloud** deployment, add these to your app's Secrets in the dashboard.
+    For **local development**, create `.streamlit/secrets.toml` with these values.
+    """)
+    
+    with st.form("setup_form"):
+        st.subheader("🗄️ Supabase Configuration")
+        supabase_url = st.text_input(
+            "Supabase URL",
+            value=DEFAULT_CONFIG["supabase_url"],
+            help="Your Supabase project URL"
+        )
+        supabase_key = st.text_input(
+            "Supabase Key",
+            value=DEFAULT_CONFIG["supabase_key"],
+            type="password",
+            help="Your Supabase anon/public key"
+        )
+        
+        st.subheader("🤖 SiliconFlow API Configuration")
+        api_key = st.text_input(
+            "API Key",
+            value=DEFAULT_CONFIG["siliconflow_api_key"],
+            type="password",
+            help="Your SiliconFlow API key"
+        )
+        base_url = st.text_input(
+            "Base URL",
+            value=DEFAULT_CONFIG["siliconflow_base_url"],
+            help="API endpoint URL"
+        )
+        model = st.text_input(
+            "Model",
+            value=DEFAULT_CONFIG["siliconflow_model"],
+            help="The model to use"
+        )
+        
+        submitted = st.form_submit_button("🚀 Save & Start", type="primary", use_container_width=True)
+        
+        if submitted:
+            # Save to session state
+            st.session_state.supabase_url = supabase_url
+            st.session_state.supabase_key = supabase_key
+            st.session_state.siliconflow_api_key = api_key
+            st.session_state.siliconflow_base_url = base_url
+            st.session_state.siliconflow_model = model
+            st.session_state.config_saved = True
+            st.rerun()
+    
+    # Show secrets.toml template
+    with st.expander("📄 View secrets.toml template"):
+        st.code(f'''[supabase]
+url = "{DEFAULT_CONFIG["supabase_url"]}"
+key = "{DEFAULT_CONFIG["supabase_key"]}"
+
+[siliconflow]
+api_key = "{DEFAULT_CONFIG["siliconflow_api_key"]}"
+base_url = "{DEFAULT_CONFIG["siliconflow_base_url"]}"
+model = "{DEFAULT_CONFIG["siliconflow_model"]}"
+''', language="toml")
+        st.caption("Copy this to `.streamlit/secrets.toml` for local development or add to Streamlit Cloud Secrets.")
+
+# =============================================================================
 # Initialize Clients
 # =============================================================================
-@st.cache_resource
 def init_supabase() -> Client:
-    """Initialize Supabase client from secrets."""
-    url = st.secrets["supabase"]["url"]
-    key = st.secrets["supabase"]["key"]
+    """Initialize Supabase client from config."""
+    url = get_config_value("supabase", "url")
+    key = get_config_value("supabase", "key")
     return create_client(url, key)
 
 def get_openai_client(api_key: str, base_url: str) -> OpenAI:
@@ -232,8 +347,6 @@ User input to analyze:"""
         
         content = response.choices[0].message.content
         # Parse the JSON response
-        import json
-        # Try to extract JSON from the response
         try:
             # Handle potential markdown code blocks
             if "```json" in content:
@@ -264,10 +377,10 @@ def render_sidebar():
         # API Settings Section
         st.subheader("🔑 API Configuration")
         
-        # Load defaults from secrets
-        default_api_key = st.secrets["siliconflow"]["api_key"]
-        default_base_url = st.secrets["siliconflow"]["base_url"]
-        default_model = st.secrets["siliconflow"]["model"]
+        # Load defaults from config (secrets or session state)
+        default_api_key = get_config_value("siliconflow", "api_key")
+        default_base_url = get_config_value("siliconflow", "base_url")
+        default_model = get_config_value("siliconflow", "model")
         
         api_key = st.text_input(
             "API Key",
@@ -323,6 +436,16 @@ def render_sidebar():
         # Clear Chat Button
         if st.button("🗑️ Clear Chat History", use_container_width=True, type="secondary"):
             st.session_state.messages = []
+            st.rerun()
+        
+        # Reset Configuration Button
+        if st.button("🔄 Reset Configuration", use_container_width=True, type="secondary"):
+            st.session_state.config_saved = False
+            st.session_state.pop("supabase_url", None)
+            st.session_state.pop("supabase_key", None)
+            st.session_state.pop("siliconflow_api_key", None)
+            st.session_state.pop("siliconflow_base_url", None)
+            st.session_state.pop("siliconflow_model", None)
             st.rerun()
         
         return api_key, model_name, base_url, about_me
@@ -468,12 +591,21 @@ def render_vocab_modal(supabase: Client):
 # =============================================================================
 def main():
     """Main application entry point."""
+    # Check if configuration is available
+    if not has_valid_config():
+        render_setup_page()
+        return
+    
     # Initialize Supabase
     try:
         supabase = init_supabase()
         st.session_state.supabase = supabase
     except Exception as e:
         st.error(f"Failed to connect to database: {e}")
+        st.info("Please check your Supabase credentials.")
+        if st.button("🔄 Reconfigure"):
+            st.session_state.config_saved = False
+            st.rerun()
         st.stop()
     
     # Render sidebar and get settings
