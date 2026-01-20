@@ -223,6 +223,35 @@ div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
 [data-testid="stPopoverBody"] input {
     -webkit-text-security: none !important;
 }
+
+/* ============ MANAGE APP BUTTON (bottom right) ============ */
+/* Make it subtle by default, fully visible on hover */
+[data-testid="manage-app-button"],
+.stStatusWidget,
+#MainMenu,
+button[kind="header"] {
+    opacity: 0.15 !important;
+    transform: scale(0.8) !important;
+    transition: all 0.2s ease !important;
+}
+
+[data-testid="manage-app-button"]:hover,
+.stStatusWidget:hover {
+    opacity: 1 !important;
+    transform: scale(1) !important;
+}
+
+/* Also style the bottom status area */
+footer, 
+[data-testid="stStatusWidget"] {
+    opacity: 0.15 !important;
+    transition: opacity 0.2s ease !important;
+}
+
+footer:hover,
+[data-testid="stStatusWidget"]:hover {
+    opacity: 1 !important;
+}
 </style>
 
 <script>
