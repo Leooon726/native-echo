@@ -224,33 +224,6 @@ div[data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {
     -webkit-text-security: none !important;
 }
 
-/* ============ MANAGE APP BUTTON (bottom right) ============ */
-/* Make it nearly invisible by default, visible on hover */
-.stApp > div:last-child,
-[data-testid="manage-app-button"],
-.stStatusWidget,
-.reportview-container .main footer,
-footer {
-    opacity: 0.05 !important;
-    transform: scale(0.5) !important;
-    transform-origin: bottom right !important;
-    transition: all 0.3s ease !important;
-}
-
-.stApp > div:last-child:hover,
-[data-testid="manage-app-button"]:hover,
-.stStatusWidget:hover,
-footer:hover {
-    opacity: 1 !important;
-    transform: scale(1) !important;
-}
-
-/* Hide the hamburger menu and footer completely on mobile */
-@media (max-width: 768px) {
-    #MainMenu, footer, .stStatusWidget {
-        display: none !important;
-    }
-}
 </style>
 
 <script>
