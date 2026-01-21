@@ -514,16 +514,8 @@ def get_chat_response(client: OpenAI, model: str, system_prompt: str, messages: 
                 "content": msg["content"]
             })
         
-        # Debug: Print the full request to Manage App logs
-        print("=" * 60)
-        print("[DEBUG] Chat Request to SiliconFlow API")
-        print("=" * 60)
-        print(f"[SYSTEM PROMPT]:\n{system_prompt}")
-        print("-" * 40)
-        print(f"[MESSAGES]: {len(messages)} messages")
-        for i, msg in enumerate(messages[-3:]):  # Last 3 messages
-            print(f"  [{msg['role']}]: {msg['content'][:100]}...")
-        print("=" * 60)
+        # Store debug info in session state for display
+        st.session_state.last_system_prompt = system_prompt
         
         response = client.chat.completions.create(
             model=model,
@@ -650,6 +642,13 @@ def render_sidebar():
                 value=default_base_url,
                 help="API endpoint URL"
             )
+        
+        # Debug: Show last system prompt
+        with st.expander("🐛 Debug: Last Prompt", expanded=False):
+            if "last_system_prompt" in st.session_state:
+                st.code(st.session_state.last_system_prompt, language=None)
+            else:
+                st.caption("Send a message to see the prompt")
         
         return api_key, model_name, base_url, about_me
 
