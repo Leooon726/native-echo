@@ -514,6 +514,17 @@ def get_chat_response(client: OpenAI, model: str, system_prompt: str, messages: 
                 "content": msg["content"]
             })
         
+        # Debug: Print the full request to Manage App logs
+        print("=" * 60)
+        print("[DEBUG] Chat Request to SiliconFlow API")
+        print("=" * 60)
+        print(f"[SYSTEM PROMPT]:\n{system_prompt}")
+        print("-" * 40)
+        print(f"[MESSAGES]: {len(messages)} messages")
+        for i, msg in enumerate(messages[-3:]):  # Last 3 messages
+            print(f"  [{msg['role']}]: {msg['content'][:100]}...")
+        print("=" * 60)
+        
         response = client.chat.completions.create(
             model=model,
             messages=formatted_messages,
