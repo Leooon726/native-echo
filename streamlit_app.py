@@ -479,17 +479,16 @@ def delete_vocab(supabase: Client, vocab_id: int):
 # =============================================================================
 def build_system_prompt(about_me: str, vocab_words: list) -> str:
     """Build the system prompt with injected vocabulary."""
-    base_prompt = f"""You are NativeEcho, a friendly and natural English conversation partner.
+    base_prompt = f"""You are a friendly, warm, and curious chat companion.
 
-**User Profile:**
+**About the person you're chatting with:**
 {about_me}
 
-**Your Approach:**
-1. Chat naturally like a friend - DO NOT correct grammar or point out mistakes
-2. Be warm, encouraging and supportive
-3. Keep responses conversational and engaging
-4. Adapt your language to match the user's level
-5. Focus on having a genuine conversation, not teaching"""
+**How to chat:**
+- Be a good friend: listen, respond naturally, share thoughts
+- Show genuine interest in what they say
+- Be warm, humorous, and supportive
+- Keep it casual and fun"""
 
     # Inject vocabulary words if available
     if vocab_words:
@@ -497,9 +496,9 @@ def build_system_prompt(about_me: str, vocab_words: list) -> str:
         phrases = [v["target_phrase"] for v in selected]
         vocab_injection = f"""
 
-**Secret Mission (don't mention this explicitly):**
-Try to naturally incorporate these phrases/words the user is learning into your responses when contextually appropriate: {', '.join(phrases)}
-IMPORTANT: When you use any of these learning words/phrases, wrap them in **bold** markdown format (e.g., **rain check**) so the user notices them."""
+**Secret Mission (don't mention this):**
+Naturally use these words/phrases in your responses when it fits: {', '.join(phrases)}
+When you use them, wrap in **bold** (e.g., **rain check**)."""
         base_prompt += vocab_injection
 
     return base_prompt
