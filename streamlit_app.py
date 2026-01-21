@@ -514,9 +514,6 @@ def get_chat_response(client: OpenAI, model: str, system_prompt: str, messages: 
                 "content": msg["content"]
             })
         
-        # Store debug info in session state for display
-        st.session_state.last_system_prompt = system_prompt
-        
         response = client.chat.completions.create(
             model=model,
             messages=formatted_messages,
@@ -700,6 +697,9 @@ def render_chat_interface(supabase: Client, client: OpenAI, model: str, about_me
         # Get active vocabulary for injection
         active_vocab = fetch_active_vocab(supabase)
         system_prompt = build_system_prompt(about_me, active_vocab)
+        
+        # Store prompt for debugging (before thread execution)
+        st.session_state.last_system_prompt = system_prompt
         
         # Run chat response and feedback analysis in parallel
         with ThreadPoolExecutor(max_workers=2) as executor:
